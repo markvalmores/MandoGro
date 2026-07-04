@@ -15,7 +15,7 @@ app.use(express.json());
 let ai: GoogleGenAI | null = null;
 try {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
+  if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "undefined" && apiKey !== "null" && apiKey.trim() !== "") {
     ai = new GoogleGenAI({
       apiKey,
       httpOptions: {
@@ -276,59 +276,72 @@ app.post("/api/game-server/friends/add", (req, res) => {
 
 // Gemini Endpoint for Adaptive branching Star Wars narrative decisions!
 app.post("/api/gemini/story", async (req, res) => {
-  const { prompt, currentPlanet, choicesHistory, characterName } = req.body;
-  
-  const defaultStoryResponse = (p: string) => {
-    return {
-      dialogue: `Din Djarin stops and looks at you. "This is the Way," he remarks solemnly. The dust blows across the canyons of ${currentPlanet || "Tatooine"}. Grogu coos softly in his floating cradle, sensing the danger. "We must head to the cantina if we want to find the client's tracer."`,
+  try {
+    const { prompt, currentPlanet, choicesHistory, characterName } = req.body || {};
+    
+    const defaultStoryResponse = (p: string) => {
+      return {
+        dialogue: `Din Djarin stops and looks at you. "This is the Way," he remarks solemnly. The dust blows across the canyons of ${currentPlanet || "Tatooine"}. Grogu coos softly in his floating cradle, sensing the danger. "We must head to the cantina if we want to find the client's tracer."`,
+        choices: [
+          { text: "Agree and scout the cantina for targets", nextPrompt: "You walk into the dim cantina, music playing, eyes focusing on you. A bounty hunter is waiting at the corner table." },
+          { text: "Refuse and scout the outskirts instead", nextPrompt: "You head out into the barren dunes. A sudden Tusken Raider patrol ambush triggers!" }
+        ],
+        elementalAffinity: "Physical",
+        bountyReward: 1500
+      };
+    };
+
+    if (!ai) {
+      // Fallback if no API key is specified
+      return res.json(defaultStoryResponse(prompt));
+    }
+
+    try {
+      const systemPrompt = `You are a legendary Star Wars storytelling engine specifically for the 'MandoGro' turn-based game. 
+      Format your response EXACTLY as a JSON object with:
+      - 'dialogue': A highly authentic, thematic dialogue or event narration featuring characters like Din Djarin, Grogu, Boba Fett, Bo-Katan, Moff Gideon, or others. Ensure Star Wars-accurate terminology (Beskar, Darksaber, Mythosaur, Nevarro, etc.) is heavily woven. Max 4 sentences.
+      - 'choices': An array of exactly 2 choice objects. Each choice must have 'text' (Max 60 chars) and 'nextPrompt' (a text prompt describing the aftermath, max 100 chars).
+      - 'elementalAffinity': One of 'Beskar-Physical', 'Blaster-Energy', 'Force-Affiliation', 'Explosive-Thermal', or 'Cryo-Carbonite'.
+      - 'bountyReward': A random number between 500 and 3000 representing credits.
+
+      Keep it Star Wars-authentic. Provide ONLY the raw JSON object. Do not wrap in markdown blocks like \`\`\`json.`;
+
+      const userPromptText = `The current player is a custom Bounty Hunter named ${characterName || "Mando-Apprentice"} currently on the planet ${currentPlanet || "Tatooine"}.
+      Action history choices: ${JSON.stringify(choicesHistory || [])}.
+      Current situation: ${prompt || "Landing at the planetary docking bay."}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: userPromptText,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+        }
+      });
+
+      const text = response.text || "";
+      try {
+        const parsed = JSON.parse(text);
+        res.json(parsed);
+      } catch (parseError) {
+        console.error("Gemini output parsing failed, raw was:", text);
+        res.json(defaultStoryResponse(prompt));
+      }
+    } catch (err) {
+      console.error("Gemini API request failed:", err);
+      res.json(defaultStoryResponse(prompt));
+    }
+  } catch (globalErr) {
+    console.error("Global story route exception caught safely:", globalErr);
+    res.json({
+      dialogue: `Din Djarin stops and looks at you. "This is the Way," he remarks solemnly. The dust blows across the canyons of Tatooine. Grogu coos softly in his floating cradle, sensing the danger. "We must head to the cantina if we want to find the client's tracer."`,
       choices: [
         { text: "Agree and scout the cantina for targets", nextPrompt: "You walk into the dim cantina, music playing, eyes focusing on you. A bounty hunter is waiting at the corner table." },
         { text: "Refuse and scout the outskirts instead", nextPrompt: "You head out into the barren dunes. A sudden Tusken Raider patrol ambush triggers!" }
       ],
       elementalAffinity: "Physical",
       bountyReward: 1500
-    };
-  };
-
-  if (!ai) {
-    // Fallback if no API key is specified
-    return res.json(defaultStoryResponse(prompt));
-  }
-
-  try {
-    const systemPrompt = `You are a legendary Star Wars storytelling engine specifically for the 'MandoGro' turn-based game. 
-    Format your response EXACTLY as a JSON object with:
-    - 'dialogue': A highly authentic, thematic dialogue or event narration featuring characters like Din Djarin, Grogu, Boba Fett, Bo-Katan, Moff Gideon, or others. Ensure Star Wars-accurate terminology (Beskar, Darksaber, Mythosaur, Nevarro, etc.) is heavily woven. Max 4 sentences.
-    - 'choices': An array of exactly 2 choice objects. Each choice must have 'text' (Max 60 chars) and 'nextPrompt' (a text prompt describing the aftermath, max 100 chars).
-    - 'elementalAffinity': One of 'Beskar-Physical', 'Blaster-Energy', 'Force-Affiliation', 'Explosive-Thermal', or 'Cryo-Carbonite'.
-    - 'bountyReward': A random number between 500 and 3000 representing credits.
-
-    Keep it Star Wars-authentic. Provide ONLY the raw JSON object. Do not wrap in markdown blocks like \`\`\`json.`;
-
-    const userPromptText = `The current player is a custom Bounty Hunter named ${characterName || "Mando-Apprentice"} currently on the planet ${currentPlanet || "Tatooine"}.
-    Action history choices: ${JSON.stringify(choicesHistory || [])}.
-    Current situation: ${prompt || "Landing at the planetary docking bay."}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: userPromptText,
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-      }
     });
-
-    const text = response.text || "";
-    try {
-      const parsed = JSON.parse(text);
-      res.json(parsed);
-    } catch (parseError) {
-      console.error("Gemini output parsing failed, raw was:", text);
-      res.json(defaultStoryResponse(prompt));
-    }
-  } catch (err) {
-    console.error("Gemini API request failed:", err);
-    res.json(defaultStoryResponse(prompt));
   }
 });
 

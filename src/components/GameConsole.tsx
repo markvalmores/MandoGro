@@ -435,7 +435,8 @@ export const GameConsole: React.FC<GameConsoleProps> = ({
   };
 
   return (
-    <div id="game_console" className="flex flex-col lg:flex-row h-screen bg-[#0A0B0E] text-[#E0E0E0] overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-[#0A0B0E] text-[#E0E0E0] overflow-hidden font-sans">
+      <div id="game_console" className="flex-1 flex flex-col lg:flex-row overflow-hidden">
       
       {/* 1. Left Action & Settings Command Hub Column */}
       <div className="w-full lg:w-80 bg-[#0D1016] border-r border-[#2D3139] flex flex-col justify-between p-4 space-y-4 shrink-0">
@@ -1058,6 +1059,27 @@ export const GameConsole: React.FC<GameConsoleProps> = ({
           <p className="mt-1">W-S-A-D coordinates movement targets. Click on-screen elements directly if virtual joystick is active.</p>
         </div>
 
+      </div>
+
+      </div>
+
+      {/* Elegant bottom footer bar with User and Streamlabs links */}
+      <div className="h-9 shrink-0 bg-[#07090C] border-t border-[#2D3139]/80 px-4 flex items-center justify-between text-[10px] font-mono text-[#8E9299] z-10">
+        <div className="flex items-center gap-1.5 select-none">
+          <span className="text-[#8E9299]/60 tracking-wider">SECURE LINK ESTABLISHED // MADE BY</span>
+          <span className="text-[#C69C6D] font-extrabold tracking-widest uppercase hover:text-[#e4b57d] transition-colors">USAGYUUN VTUBER</span>
+        </div>
+        <div className="flex items-center">
+          <a 
+            id="tip_cookie_link"
+            href="https://streamlabs.com/usagyuunvtuber/tip" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-[#C69C6D] hover:text-[#e4b57d] font-bold flex items-center gap-1.5 bg-[#C69C6D]/10 hover:bg-[#C69C6D]/20 px-3 py-1 rounded border border-[#C69C6D]/30 transition-all uppercase text-[9px] tracking-widest hover:scale-105 active:scale-95 duration-150"
+          >
+            <span>🍪 BUY ME A COOKIE</span>
+          </a>
+        </div>
       </div>
 
     </div>
