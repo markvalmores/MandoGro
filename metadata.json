@@ -1,0 +1,6 @@
+{
+  "name": "MandoGro",
+  "description": "An immersive 2.5D Star Wars turn-based strategic RPG with story-driven branching narratives, bounty hunting, deep customization, mini-games, social hubs, and cross-platform progression.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
